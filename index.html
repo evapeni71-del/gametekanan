@@ -1,0 +1,1203 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>GARDEN GUARDIAN: LATIHAN IPA SERU!</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&family=Nunito:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #4ade80;
+            --secondary: #22c55e;
+            --accent: #f59e0b;
+            --danger: #ef4444;
+            --dark: #1f2937;
+            --board-light: #86efac;
+            --board-dark: #4ade80;
+        }
+
+        body {
+            font-family: 'Nunito', sans-serif;
+            background-color: #064e3b;
+            color: white;
+            overflow: hidden; /* Prevent scrolling on desktop */
+            touch-action: none; /* Prevent pinch zoom on mobile */
+            margin: 0;
+            padding: 0;
+        }
+
+        h1, h2, h3, .font-title {
+            font-family: 'Fredoka One', cursive;
+        }
+
+        /* Animations */
+        @keyframes float {
+            0% { transform: translateY(0px); }
+            50% { transform: translateY(-10px); }
+            100% { transform: translateY(0px); }
+        }
+
+        @keyframes pulse-glow {
+            0% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.7); }
+            70% { box-shadow: 0 0 0 15px rgba(245, 158, 11, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0); }
+        }
+
+        @keyframes zoomIn {
+            from { transform: scale(0); opacity: 0; }
+            to { transform: scale(1); opacity: 1; }
+        }
+
+        @keyframes bounce-wrong {
+            0%, 20%, 50%, 80%, 100% {transform: translateY(0);}
+            40% {transform: translateY(-20px);}
+            60% {transform: translateY(-10px);}
+        }
+
+        .animate-float { animation: float 3s ease-in-out infinite; }
+        .animate-glow { animation: pulse-glow 2s infinite; }
+        .animate-zoom { animation: zoomIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; }
+        .animate-bounce-wrong { animation: bounce-wrong 1s forwards; }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: rgba(0,0,0,0.1); }
+        ::-webkit-scrollbar-thumb { background: var(--primary); border-radius: 10px; }
+
+        /* Game Layouts */
+        #game-container {
+            display: none;
+            width: 100vw;
+            height: 100vh;
+            padding: 10px;
+            box-sizing: border-box;
+        }
+
+        .layout-solo { display: flex; justify-content: center; align-items: center; width: 100%; height: 100%; }
+        
+        .layout-duel { 
+            display: flex; 
+            flex-direction: row; 
+            gap: 10px; 
+            width: 100%; 
+            height: 100%; 
+        }
+        
+        .layout-squad { 
+            display: grid; 
+            grid-template-columns: 1fr 1fr; 
+            grid-template-rows: 1fr 1fr; 
+            gap: 10px; 
+            width: 100%; 
+            height: 100%; 
+        }
+
+        @media (max-width: 768px) and (orientation: portrait) {
+            body { overflow-y: auto; touch-action: auto; }
+            #game-container { height: auto; min-height: 100vh; padding-bottom: 20px; }
+            .layout-duel, .layout-squad { flex-direction: column; display: flex; }
+            .player-board { height: 80vh !important; margin-bottom: 20px; }
+        }
+
+        /* Player Board Styles */
+        .player-board {
+            background: linear-gradient(180deg, #1e3a8a 0%, #1e40af 100%);
+            border-radius: 16px;
+            border: 4px solid #3b82f6;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            position: relative;
+            width: 100%;
+            height: 100%;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+        }
+
+        .board-header {
+            background: rgba(0,0,0,0.4);
+            padding: 8px 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 2px solid #3b82f6;
+        }
+
+        .plant-selector {
+            display: flex;
+            gap: 8px;
+            padding: 8px;
+            background: rgba(255,255,255,0.1);
+            overflow-x: auto;
+            align-items: center;
+        }
+
+        .plant-card {
+            background: rgba(0,0,0,0.5);
+            border: 2px solid transparent;
+            border-radius: 8px;
+            padding: 4px 8px;
+            cursor: pointer;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-width: 60px;
+            transition: all 0.2s;
+        }
+
+        .plant-card:hover { transform: translateY(-2px); background: rgba(255,255,255,0.2); }
+        .plant-card.selected { border-color: var(--accent); background: rgba(245, 158, 11, 0.3); }
+        .plant-card.disabled { opacity: 0.5; cursor: not-allowed; filter: grayscale(1); }
+
+        .canvas-container {
+            flex-grow: 1;
+            position: relative;
+            background-color: #65a30d;
+            border-top: 2px solid #4d7c0f;
+            border-bottom: 2px solid #4d7c0f;
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+            cursor: crosshair;
+        }
+
+        .board-footer {
+            padding: 10px;
+            background: rgba(0,0,0,0.4);
+            display: flex;
+            justify-content: center;
+        }
+
+        .btn-jawab {
+            background: linear-gradient(to bottom, #f59e0b, #d97706);
+            border: 2px solid #fbbf24;
+            border-radius: 12px;
+            padding: 12px 24px;
+            font-size: 1.2rem;
+            font-family: 'Fredoka One', cursive;
+            color: white;
+            text-shadow: 1px 1px 2px black;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+            cursor: pointer;
+            transition: transform 0.1s;
+            width: 100%;
+            max-width: 300px;
+        }
+        .btn-jawab:active { transform: scale(0.95); }
+
+        /* Modals */
+        .modal-overlay {
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.8);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 50;
+            backdrop-filter: blur(4px);
+        }
+
+        .question-box {
+            background: white;
+            color: var(--dark);
+            padding: 20px;
+            border-radius: 16px;
+            width: 90%;
+            max-width: 500px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+            border: 4px solid var(--accent);
+        }
+
+        .option-btn {
+            display: block;
+            width: 100%;
+            text-align: left;
+            padding: 12px;
+            margin-bottom: 8px;
+            background: #f3f4f6;
+            border: 2px solid #e5e7eb;
+            border-radius: 8px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .option-btn:hover { background: #e0e7ff; border-color: #818cf8; }
+        
+        .feedback-box {
+            text-align: center;
+            padding: 20px;
+        }
+
+        /* Screen Management */
+        .screen { display: none; width: 100vw; height: 100vh; position: absolute; top: 0; left: 0; }
+        .screen.active { display: flex; flex-direction: column; }
+
+        .menu-bg {
+            background-image: linear-gradient(rgba(0, 0, 0, 0.6), rgba(0, 0, 0, 0.8)), url('https://imgur.com/aQ4Ty0F.png');
+            background-size: cover;
+            background-position: center;
+            background-attachment: fixed;
+        }
+
+        /* Health Bar */
+        .health-bar-container {
+            width: 100px;
+            height: 12px;
+            background: #374151;
+            border-radius: 6px;
+            border: 1px solid #111827;
+            overflow: hidden;
+        }
+        .health-bar {
+            height: 100%;
+            background: #ef4444;
+            width: 100%;
+            transition: width 0.3s;
+        }
+    </style>
+</head>
+<body>
+
+    <script>
+        // Global screen manager
+        window.showScreen = function(screenId) {
+            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+            const targetScreen = document.getElementById(screenId);
+            if (targetScreen) {
+                targetScreen.classList.add('active');
+            }
+        };
+    </script>
+
+    <!-- AUDIO SYSTEM -->
+    <script>
+        const AudioSys = {
+            ctx: null,
+            init: function() {
+                if(!this.ctx) this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+            },
+            playTone: function(startFreq, endFreq, type, duration, vol=0.1) {
+                if(!this.ctx) return;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = type;
+                osc.frequency.setValueAtTime(startFreq, this.ctx.currentTime);
+                if(endFreq) osc.frequency.exponentialRampToValueAtTime(endFreq, this.ctx.currentTime + duration);
+                
+                gain.gain.setValueAtTime(vol, this.ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + duration);
+                
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start();
+                osc.stop(this.ctx.currentTime + duration);
+            },
+            playNoise: function(duration, vol=0.1) {
+                if(!this.ctx) return;
+                const bufferSize = this.ctx.sampleRate * duration;
+                const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+                const data = buffer.getChannelData(0);
+                for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
+                
+                const noise = this.ctx.createBufferSource();
+                noise.buffer = buffer;
+                const gain = this.ctx.createGain();
+                const filter = this.ctx.createBiquadFilter();
+                
+                filter.type = 'lowpass';
+                filter.frequency.value = 1000;
+                
+                gain.gain.setValueAtTime(vol, this.ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + duration);
+                
+                noise.connect(filter);
+                filter.connect(gain);
+                gain.connect(this.ctx.destination);
+                noise.start();
+            },
+            shoot: function() { this.playTone(600, 200, 'square', 0.1, 0.05); },
+            hit: function() { this.playNoise(0.1, 0.1); },
+            bomb: function() { this.playNoise(0.5, 0.4); },
+            correct: function() { 
+                this.playTone(440, null, 'sine', 0.1, 0.1); 
+                setTimeout(() => this.playTone(554, null, 'sine', 0.1, 0.1), 100);
+                setTimeout(() => this.playTone(659, null, 'sine', 0.3, 0.1), 200);
+            },
+            wrong: function() {
+                this.playTone(300, 150, 'sawtooth', 0.4, 0.1);
+            },
+            plant: function() { this.playTone(300, 500, 'sine', 0.1, 0.1); },
+            sun: function() { 
+                this.playTone(800, null, 'sine', 0.1, 0.05);
+                setTimeout(() => this.playTone(1200, null, 'sine', 0.2, 0.05), 100); 
+            },
+            gameOver: function() {
+                this.playTone(300, 200, 'sawtooth', 0.5, 0.1);
+                setTimeout(() => this.playTone(200, 100, 'sawtooth', 1.0, 0.1), 500);
+            },
+            victory: function() {
+                this.playTone(440, null, 'sine', 0.2, 0.1); 
+                setTimeout(() => this.playTone(554, null, 'sine', 0.2, 0.1), 200);
+                setTimeout(() => this.playTone(659, null, 'sine', 0.2, 0.1), 400);
+                setTimeout(() => this.playTone(880, null, 'sine', 0.6, 0.1), 600);
+            }
+        };
+    </script>
+
+    <!-- INTRO SCREEN -->
+    <div id="screen-intro" class="screen active items-center justify-center relative bg-black">
+        <div class="absolute inset-0 bg-cover bg-center" style="background-image: url('https://imgur.com/Fg7cCE5.png');"></div>
+        <div class="absolute inset-0 bg-black/20"></div>
+        
+        <div class="z-10 text-center flex flex-col items-center justify-center p-4 h-full w-full">
+            <div class="flex-grow"></div>
+            <button onclick="showScreen('screen-menu')" class="mb-16 md:mb-24 px-8 py-4 rounded-full font-bold text-xs md:text-sm tracking-[0.2em] uppercase text-white shadow-[0_0_20px_rgba(244,63,94,0.6)] bg-gradient-to-r from-orange-500 to-pink-500 border border-white/40 backdrop-blur-md transition-all hover:scale-105 hover:shadow-[0_0_30px_rgba(244,63,94,0.9)] active:scale-95 animate-pulse">
+                Mulai Petualangan Memecahkan Misi Sekarang
+            </button>
+        </div>
+    </div>
+
+    <!-- MAIN MENU SCREEN -->
+    <div id="screen-menu" class="screen menu-bg items-center justify-center">
+        <div class="absolute top-4 left-4 z-20 bg-black/40 px-3 py-1 rounded-lg text-white/90 text-sm font-bold backdrop-blur-sm shadow-lg border border-white/20">
+            Karya : Eva Hesti Peni, S.Pd
+        </div>
+        <div class="text-center z-10 p-4 relative w-full max-w-4xl mx-auto">
+            <h1 class="text-5xl md:text-7xl text-yellow-300 font-title mb-2 drop-shadow-[0_4px_4px_rgba(0,0,0,0.8)] animate-float">
+                GARDEN GUARDIAN
+            </h1>
+            <h2 class="text-2xl md:text-3xl text-white font-bold mb-8 drop-shadow-[0_2px_2px_rgba(0,0,0,0.8)]">
+                Latihan IPA Seru!
+            </h2>
+            
+            <div class="flex justify-center gap-4 mb-12 text-4xl">
+                <span class="animate-bounce" style="animation-delay: 0s;">🌻</span>
+                <span class="animate-bounce" style="animation-delay: 0.2s;">🌱</span>
+                <span class="animate-bounce" style="animation-delay: 0.4s;">🛡️</span>
+                <span class="animate-bounce" style="animation-delay: 0.6s;">❄️</span>
+                <span class="animate-bounce" style="animation-delay: 0.1s;">🧟</span>
+                <span class="animate-bounce" style="animation-delay: 0.3s;">🪨</span>
+            </div>
+
+            <div class="flex flex-col gap-4 max-w-sm mx-auto">
+                <button onclick="showScreen('screen-mode')" class="bg-green-500 hover:bg-green-400 text-white font-title text-2xl py-4 px-8 rounded-xl border-b-4 border-green-700 shadow-lg transform transition active:translate-y-1 active:border-b-0 animate-glow">
+                    MULAI BERMAIN
+                </button>
+                <button onclick="showScreen('screen-howto')" class="bg-blue-500 hover:bg-blue-400 text-white font-title text-xl py-3 px-8 rounded-xl border-b-4 border-blue-700 shadow-lg transform transition active:translate-y-1 active:border-b-0">
+                    CARA BERMAIN
+                </button>
+                <button onclick="showScreen('screen-intro')" class="bg-red-500 hover:bg-red-400 text-white font-title text-xl py-3 px-8 rounded-xl border-b-4 border-red-700 shadow-lg transform transition active:translate-y-1 active:border-b-0">
+                    KEMBALI
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- HOW TO PLAY SCREEN -->
+    <div id="screen-howto" class="screen menu-bg items-center justify-center p-4">
+        <div class="bg-white text-gray-800 rounded-2xl p-6 md:p-10 max-w-2xl w-full shadow-2xl relative">
+            <h2 class="text-3xl font-title text-green-600 mb-4 text-center">CARA BERMAIN</h2>
+            <div class="space-y-4 text-lg">
+                <p>1. Lindungi kebunmu dari serangan monster yang datang dari sebelah kanan.</p>
+                <p>2. Tekan tombol <strong class="text-yellow-600">JAWAB SOAL</strong> untuk menjawab pertanyaan. Jika BENAR, kamu mendapat Energi (+50)!</p>
+                <p>3. Soal berisi materi IPA Kelas IX: <strong>TEKANAN</strong>.</p>
+                <p>4. Gunakan Energi untuk menanam tanaman pertahanan:</p>
+                <ul class="list-none grid grid-cols-2 gap-2 text-sm bg-gray-100 p-4 rounded-lg">
+                    <li>🌻 <strong>Sunflower (50)</strong>: Pasif hasilkan energi.</li>
+                    <li>🌱 <strong>Pea Shooter (100)</strong>: Penembak dasar.</li>
+                    <li>❄️ <strong>Ice Flower (150)</strong>: Memperlambat monster.</li>
+                    <li>🌵 <strong>Thorn (100)</strong>: Dinding berduri.</li>
+                    <li>💣 <strong>Bomb (200)</strong>: Ledakan area.</li>
+                </ul>
+                <p>5. Permainan berakhir jika monster mencapai batas kiri kebun.</p>
+            </div>
+            <button onclick="showScreen('screen-menu')" class="mt-8 w-full bg-red-500 hover:bg-red-400 text-white font-bold py-3 rounded-lg border-b-4 border-red-700 active:translate-y-1 active:border-b-0">
+                KEMBALI
+            </button>
+        </div>
+    </div>
+
+    <!-- MODE SELECTION SCREEN -->
+    <div id="screen-mode" class="screen menu-bg items-center justify-center p-4">
+        <h2 class="text-4xl font-title text-white mb-8 drop-shadow-md text-center">PILIH MODE PERMAINAN</h2>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl w-full">
+            <!-- Solo -->
+            <div onclick="startGame(1)" class="bg-gradient-to-b from-blue-400 to-blue-600 p-6 rounded-2xl shadow-xl cursor-pointer transform transition hover:scale-105 hover:shadow-2xl border-4 border-blue-300 text-center">
+                <div class="text-6xl mb-4">👤</div>
+                <h3 class="text-2xl font-title text-white mb-2">SOLO MODE</h3>
+                <p class="text-blue-100">Bermain sendiri mempertahankan kebun layar penuh.</p>
+            </div>
+            <!-- Duel -->
+            <div onclick="startGame(2)" class="bg-gradient-to-b from-red-400 to-red-600 p-6 rounded-2xl shadow-xl cursor-pointer transform transition hover:scale-105 hover:shadow-2xl border-4 border-red-300 text-center">
+                <div class="text-6xl mb-4">⚔️</div>
+                <h3 class="text-2xl font-title text-white mb-2">DUEL MODE</h3>
+                <p class="text-red-100">2 Pemain. Layar terbagi. Siapa yang bertahan terlama?</p>
+            </div>
+            <!-- Squad -->
+            <div onclick="startGame(4)" class="bg-gradient-to-b from-purple-400 to-purple-600 p-6 rounded-2xl shadow-xl cursor-pointer transform transition hover:scale-105 hover:shadow-2xl border-4 border-purple-300 text-center">
+                <div class="text-6xl mb-4">🛡️</div>
+                <h3 class="text-2xl font-title text-white mb-2">SQUAD MODE</h3>
+                <p class="text-purple-100">4 Pemain dalam 1 layar. Berlomba meraih skor tertinggi!</p>
+            </div>
+        </div>
+        <button onclick="showScreen('screen-menu')" class="mt-12 bg-gray-500 hover:bg-gray-400 text-white font-bold py-2 px-6 rounded-lg">Kembali</button>
+    </div>
+
+    <!-- GAME CONTAINER -->
+    <div id="game-container">
+        <!-- Player Boards will be injected here via JS -->
+    </div>
+
+    <!-- TEMPLATE FOR PLAYER BOARD -->
+    <template id="player-board-template">
+        <div class="player-board">
+            <div class="board-header">
+                <div class="flex items-center gap-2">
+                    <button class="btn-exit bg-red-600 hover:bg-red-500 border border-red-800 text-white rounded-full w-7 h-7 flex items-center justify-center text-sm font-bold transition transform active:scale-90 shadow-md" title="Keluar ke Menu">✕</button>
+                    <div class="font-title text-xl text-yellow-300 player-name">P1</div>
+                </div>
+                <div class="flex gap-4 text-sm font-bold">
+                    <div class="bg-black bg-opacity-50 px-2 py-1 rounded flex items-center gap-1">
+                        🏆 <span class="score-display">0</span>
+                    </div>
+                    <div class="bg-black bg-opacity-50 px-2 py-1 rounded flex items-center gap-1 text-yellow-300">
+                        ⚡ <span class="energy-display">0</span>
+                    </div>
+                </div>
+                <div class="flex flex-col items-end">
+                    <span class="text-[10px] font-bold text-red-300 mb-1 tracking-widest uppercase">🛡️ Pertahanan</span>
+                    <div class="health-bar-container"><div class="health-bar"></div></div>
+                </div>
+            </div>
+
+            <div class="board-footer" style="padding: 8px; border-bottom: 2px solid #3b82f6;">
+                <button class="btn-jawab animate-glow" style="padding: 8px 16px; font-size: 1.1rem; max-width: none;">📝 JAWAB SOAL (+50 ⚡)</button>
+            </div>
+
+            <div class="plant-selector">
+                <div class="plant-card" data-type="sunflower" data-cost="50">
+                    <div class="text-2xl">🌻</div><div class="text-xs font-bold text-yellow-300 mt-1">50</div>
+                </div>
+                <div class="plant-card" data-type="peashooter" data-cost="100">
+                    <div class="text-2xl">🌱</div><div class="text-xs font-bold text-yellow-300 mt-1">100</div>
+                </div>
+                <div class="plant-card" data-type="iceflower" data-cost="150">
+                    <div class="text-2xl">❄️</div><div class="text-xs font-bold text-yellow-300 mt-1">150</div>
+                </div>
+                <div class="plant-card" data-type="thorn" data-cost="100">
+                    <div class="text-2xl">🌵</div><div class="text-xs font-bold text-yellow-300 mt-1">100</div>
+                </div>
+                <div class="plant-card" data-type="bomb" data-cost="200">
+                    <div class="text-2xl">💣</div><div class="text-xs font-bold text-yellow-300 mt-1">200</div>
+                </div>
+                <div class="ml-auto text-xs text-gray-300 px-2">Soal: <span class="q-progress">0/10</span></div>
+            </div>
+
+            <div class="canvas-container">
+                <canvas></canvas>
+
+                <!-- Question Modal -->
+                <div class="modal-overlay hidden modal-question">
+                    <div class="question-box">
+                        <h3 class="font-title text-xl text-blue-600 mb-2 border-b pb-2">Soal IPA - Tekanan</h3>
+                        <p class="text-lg font-bold mb-4 q-text">Pertanyaan...</p>
+                        <div class="options-container space-y-2"></div>
+                    </div>
+                </div>
+
+                <!-- Feedback Modal -->
+                <div class="modal-overlay hidden modal-feedback">
+                    <div class="question-box feedback-box">
+                        <div class="text-6xl mb-4 feedback-icon">🎉</div>
+                        <h3 class="font-title text-2xl mb-2 feedback-title">BENAR!</h3>
+                        <p class="text-lg mb-4 feedback-text">Penjelasan...</p>
+                        <button class="bg-blue-500 text-white font-bold py-2 px-6 rounded btn-lanjut">Lanjut Game</button>
+                    </div>
+                </div>
+
+                <!-- Game Over Modal -->
+                <div class="modal-overlay hidden modal-gameover">
+                    <div class="question-box feedback-box">
+                        <h3 class="font-title text-3xl mb-2 text-red-600 go-title">GAME OVER</h3>
+                        <div class="text-lg mb-4 space-y-2 text-left bg-gray-100 p-4 rounded">
+                            <p>Skor: <span class="go-score font-bold">0</span></p>
+                            <p>Soal Benar: <span class="go-benar font-bold">0</span></p>
+                            <p>Monster Dikalahkan: <span class="go-kills font-bold">0</span></p>
+                        </div>
+                        <button class="bg-green-500 text-white font-bold py-2 px-6 rounded w-full btn-mainlagi">Menu Utama</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </template>
+
+    <script>
+        // --- DATA SOAL IPA ---
+        const QuestionBank = [
+            { q: "Seorang petani memakai sepatu bot dengan sol lebar saat ke sawah berlumpur. Tujuannya adalah...", o: ["Memperkecil luas bidang tekan agar tekanan kecil", "Memperbesar luas bidang tekan agar tekanan kecil", "Memperbesar luas bidang tekan agar tekanan besar", "Memperkecil luas bidang tekan agar tekanan besar"], a: 1, exp: "Sesuai rumus P=F/A. Semakin besar luas penampang (A), semakin kecil tekanan (P), sehingga tidak mudah amblas." },
+            { q: "Prinsip kerja dongkrak hidrolik yang dapat mengangkat mobil berat dengan gaya kecil didasarkan pada...", o: ["Hukum Archimedes", "Hukum Boyle", "Hukum Newton", "Hukum Pascal"], a: 3, exp: "Hukum Pascal menyatakan tekanan yang diberikan pada zat cair dalam ruang tertutup diteruskan ke segala arah sama besar." },
+            { q: "Kapal selam dapat melayang di dalam air laut karena mengatur...", o: ["Massa jenis kapal sama dengan massa jenis air laut", "Volume kapal menjadi lebih kecil dari air", "Massa jenis kapal lebih besar dari air laut", "Massa jenis kapal lebih kecil dari air laut"], a: 0, exp: "Benda melayang jika massa jenis benda = massa jenis zat cair (Hukum Archimedes)." },
+            { q: "Sebuah balok memiliki berat 100 N dengan luas alas 2 m². Berapa tekanan yang diberikan balok pada lantai?", o: ["50 N/m²", "200 N/m²", "0.02 N/m²", "102 N/m²"], a: 0, exp: "P = F/A = 100 N / 2 m² = 50 N/m² (Pascal)." },
+            { q: "Bendungan air selalu dibangun lebih tebal di bagian bawahnya. Hal ini karena...", o: ["Menahan gaya gravitasi", "Tekanan udara di bawah lebih besar", "Tekanan hidrostatis semakin besar pada kedalaman yang bertambah", "Arus air di bawah lebih deras"], a: 2, exp: "Tekanan hidrostatis (P = ρ.g.h) berbanding lurus dengan kedalaman (h)." },
+            { q: "Alat yang berfungsi untuk mengukur tekanan udara luar adalah...", o: ["Manometer", "Barometer", "Hidrometer", "Termometer"], a: 1, exp: "Barometer digunakan mengukur tekanan atmosfer luar. Manometer untuk tekanan gas ruang tertutup." },
+            { q: "Pemasangan paku yang diruncingkan ujungnya bertujuan untuk...", o: ["Memperbesar gaya dorong", "Memperkecil tekanan", "Memperbesar luas bidang", "Memperbesar tekanan"], a: 3, exp: "Ujung runcing berarti luas permukaan (A) kecil, sehingga menghasilkan Tekanan (P) yang besar menembus kayu." },
+            { q: "Sebuah benda dicelupkan ke air. Benda mendapat gaya ke atas sebesar berat zat cair yang dipindahkan. Ini adalah bunyi...", o: ["Hukum Boyle", "Hukum Pascal", "Hukum Archimedes", "Hukum Hooke"], a: 2, exp: "Ini adalah definisi dari Hukum Archimedes mengenai gaya apung." },
+            { q: "Ikan laut dalam dapat hancur jika dibawa ke permukaan dengan cepat karena...", o: ["Kekurangan oksigen", "Perbedaan suhu drastis", "Tekanan hidrostatis tubuh ikan lebih besar dari tekanan udara luar", "Tekanan hidrostatis di permukaan terlalu besar"], a: 2, exp: "Tubuh ikan beradaptasi dengan tekanan hidrostatis tinggi di dalam laut. Di permukaan, tekanan luar kecil sehingga tubuhnya mengembang." },
+            { q: "Satuan tekanan dalam Sistem Internasional (SI) disebut Pascal (Pa), yang setara dengan...", o: ["N.m", "kg/m³", "N/m²", "Joule"], a: 2, exp: "Tekanan = Gaya / Luas. Satuannya Newton / meter persegi (N/m²)." }
+        ];
+
+        // --- GAME ASSETS ---
+        const GameAssets = {
+            monsterImg: new Image(),
+            sunflowerImg: new Image(),
+            peashooterImg: new Image(),
+            iceflowerImg: new Image(),
+            thornImg: new Image(),
+            bombImg: new Image(),
+            bgImg: new Image()
+        };
+
+        function processTransparentBg(imgObj, targetKey) {
+            imgObj.crossOrigin = "Anonymous";
+            imgObj.onload = function() {
+                try {
+                    const c = document.createElement('canvas');
+                    c.width = imgObj.width;
+                    c.height = imgObj.height;
+                    const ctx = c.getContext('2d');
+                    ctx.drawImage(imgObj, 0, 0);
+                    const imgData = ctx.getImageData(0, 0, c.width, c.height);
+                    const data = imgData.data;
+                    
+                    for (let i = 0; i < data.length; i += 4) {
+                        if (data[i] > 220 && data[i+1] > 220 && data[i+2] > 220) {
+                            data[i+3] = 0;
+                        }
+                    }
+                    
+                    ctx.putImageData(imgData, 0, 0);
+                    const cleanImg = new Image();
+                    cleanImg.src = c.toDataURL();
+                    GameAssets[targetKey] = cleanImg;
+                } catch (e) {
+                    GameAssets[targetKey] = imgObj;
+                }
+            };
+        }
+
+        // Load assets
+        processTransparentBg(GameAssets.monsterImg, 'monsterImgProcessed');
+        GameAssets.monsterImg.src = 'https://i.imgur.com/QwFhcWg.png';
+
+        processTransparentBg(GameAssets.sunflowerImg, 'sunflowerImgProcessed');
+        GameAssets.sunflowerImg.src = 'https://i.imgur.com/wlBEbJa.png';
+
+        processTransparentBg(GameAssets.peashooterImg, 'peashooterImgProcessed');
+        GameAssets.peashooterImg.src = 'https://i.imgur.com/7G0DRdQ.png';
+
+        processTransparentBg(GameAssets.iceflowerImg, 'iceflowerImgProcessed');
+        GameAssets.iceflowerImg.src = 'https://i.imgur.com/7uf2pkK.png';
+
+        processTransparentBg(GameAssets.thornImg, 'thornImgProcessed');
+        GameAssets.thornImg.src = 'https://i.imgur.com/9FDXzkv.png';
+
+        GameAssets.bombImg.src = 'https://i.imgur.com/4yAyrOP.png';
+        GameAssets.bgImg.src = 'https://i.imgur.com/uxxuUv8.png';
+
+        // --- CLASSES ---
+        class Entity {
+            constructor(x, y, r, c, type) {
+                this.x = x; this.y = y; this.r = r; this.c = c;
+                this.type = type; this.active = true;
+            }
+        }
+
+        class Plant extends Entity {
+            constructor(x, y, r, c, type) {
+                super(x, y, r, c, type);
+                this.lastAction = 0;
+                this.recoil = 0;
+                
+                switch(type) {
+                    case 'sunflower': this.hp = 100; this.maxHp = 100; this.icon = '🌻'; break;
+                    case 'peashooter': this.hp = 100; this.maxHp = 100; this.icon = '🌱'; break;
+                    case 'iceflower': this.hp = 100; this.maxHp = 100; this.icon = '❄️'; break;
+                    case 'thorn': this.hp = 300; this.maxHp = 300; this.icon = '🌵'; break;
+                    case 'bomb': this.hp = 50; this.maxHp = 50; this.icon = '💣'; this.timer = 60; break;
+                }
+            }
+        }
+
+        class Monster extends Entity {
+            constructor(x, y, r, c, type) {
+                super(x, y, r, c, type);
+                this.isSlowed = 0;
+                this.walkCycle = Math.random() * 10;
+                
+                switch(type) {
+                    case 'zombie': this.hp = 100; this.speed = 0.08; this.icon = '🧟'; this.damage = 1; break; // Diperlambat dari 0.2
+                    case 'speed': this.hp = 70; this.speed = 0.15; this.icon = '🏃'; this.damage = 0.5; break; // Diperlambat
+                    case 'rock': this.hp = 300; this.speed = 0.05; this.icon = '🪨'; this.damage = 2; break; // Diperlambat dari 0.15
+                    case 'boss': this.hp = 800; this.speed = 0.03; this.icon = '👹'; this.damage = 3; break; // Diperlambat dari 0.1
+                }
+                this.maxHp = this.hp;
+                this.baseSpeed = this.speed;
+            }
+        }
+
+        class Projectile {
+            constructor(x, y, r, isIce) {
+                this.x = x; this.y = y; this.r = r;
+                this.isIce = isIce;
+                this.speed = 3;
+                this.damage = 20;
+                this.active = true;
+            }
+        }
+
+        class GameInstance {
+            constructor(containerElement, playerId) {
+                this.container = containerElement;
+                this.id = playerId;
+                
+                this.score = 0;
+                this.energy = 0; // Mulai dengan 0 energi
+                this.health = 100;
+                this.questionsAnswered = 0;
+                this.correctAnswers = 0;
+                this.monstersKilled = 0;
+                this.isPaused = false;
+                this.isGameOver = false;
+                this.maxQuestions = 10; // Batas maksimal 10 soal
+                this.plants = [];
+                this.monsters = [];
+                this.projectiles = [];
+                
+                this.questions = [...QuestionBank].sort(() => Math.random() - 0.5);
+                
+                this.rows = 5;
+                this.cols = 9;
+                
+                this.frameCount = 0;
+                this.wave = 1;
+                this.monsterSpawnTimer = 0;
+                this.monsterSpawnRate = 450; // Jeda awal kemunculan diperlama (sebelumnya 300)
+                
+                this.selectedPlantType = null;
+                
+                this.initDOM();
+                this.resizeCanvas();
+                
+                this.canvas.addEventListener('click', this.handleGridClick.bind(this));
+                window.addEventListener('resize', this.resizeCanvas.bind(this));
+            }
+
+            initDOM() {
+                this.canvas = this.container.querySelector('canvas');
+                this.ctx = this.canvas.getContext('2d');
+                
+                this.elScore = this.container.querySelector('.score-display');
+                this.elEnergy = this.container.querySelector('.energy-display');
+                this.elHealthBar = this.container.querySelector('.health-bar');
+                this.elProgress = this.container.querySelector('.q-progress');
+                
+                this.modalQuestion = this.container.querySelector('.modal-question');
+                this.modalFeedback = this.container.querySelector('.modal-feedback');
+                this.modalGameOver = this.container.querySelector('.modal-gameover');
+                
+                this.container.querySelector('.btn-jawab').onclick = () => { AudioSys.init(); this.openQuestion(); };
+                this.container.querySelector('.btn-lanjut').onclick = () => { AudioSys.init(); this.closeFeedback(); };
+                this.container.querySelector('.btn-mainlagi').onclick = () => { AudioSys.init(); stopAllGames(); showScreen('screen-menu'); };
+                this.container.querySelector('.btn-exit').onclick = () => { AudioSys.init(); stopAllGames(); showScreen('screen-menu'); };
+                
+                const cards = this.container.querySelectorAll('.plant-card');
+                cards.forEach(card => {
+                    card.onclick = () => {
+                        AudioSys.init();
+                        cards.forEach(c => c.classList.remove('selected'));
+                        const type = card.dataset.type;
+                        const cost = parseInt(card.dataset.cost);
+                        if (this.energy >= cost) {
+                            this.selectedPlantType = type;
+                            card.classList.add('selected');
+                        } else {
+                            this.selectedPlantType = null;
+                        }
+                    };
+                });
+                
+                this.updateUI();
+            }
+
+            resizeCanvas() {
+                const rect = this.canvas.parentElement.getBoundingClientRect();
+                this.canvas.width = rect.width;
+                this.canvas.height = rect.height;
+                this.cellWidth = this.canvas.width / this.cols;
+                this.cellHeight = this.canvas.height / this.rows;
+            }
+
+            updateUI() {
+                this.elScore.innerText = this.score;
+                this.elEnergy.innerText = this.energy;
+                this.elHealthBar.style.width = Math.max(0, this.health) + '%';
+                this.elProgress.innerText = `${this.questionsAnswered}/${this.maxQuestions}`;
+                
+                // Ubah status tombol Jawab Soal jika sudah 10/10
+                const btnJawab = this.container.querySelector('.btn-jawab');
+                if (btnJawab) {
+                    if (this.questionsAnswered >= this.maxQuestions) {
+                        btnJawab.disabled = true;
+                        btnJawab.innerText = '✅ SOAL SELESAI (10/10)';
+                        btnJawab.classList.remove('animate-glow');
+                        btnJawab.style.opacity = '0.6';
+                        btnJawab.style.cursor = 'not-allowed';
+                    } else {
+                        btnJawab.disabled = false;
+                        btnJawab.innerText = '📝 JAWAB SOAL (+50 ⚡)';
+                    }
+                }
+                
+                const cards = this.container.querySelectorAll('.plant-card');
+                cards.forEach(card => {
+                    const cost = parseInt(card.dataset.cost);
+                    if (this.energy < cost) {
+                        card.classList.add('disabled');
+                        if (card.classList.contains('selected')) {
+                            card.classList.remove('selected');
+                            this.selectedPlantType = null;
+                        }
+                    } else {
+                        card.classList.remove('disabled');
+                    }
+                });
+            }
+
+            handleGridClick(e) {
+                AudioSys.init();
+                if (this.isPaused || this.isGameOver || !this.selectedPlantType) return;
+                
+                const rect = this.canvas.getBoundingClientRect();
+                const clickX = e.clientX - rect.left;
+                const clickY = e.clientY - rect.top;
+                
+                const c = Math.floor(clickX / this.cellWidth);
+                const r = Math.floor(clickY / this.cellHeight);
+                
+                if (c >= 0 && c < this.cols && r >= 0 && r < this.rows) {
+                    const existing = this.plants.find(p => p.r === r && p.c === c && p.active);
+                    if (!existing) {
+                        const costs = { sunflower: 50, peashooter: 100, iceflower: 150, thorn: 100, bomb: 200 };
+                        const cost = costs[this.selectedPlantType];
+                        
+                        if (this.energy >= cost) {
+                            this.energy -= cost;
+                            const plantX = c * this.cellWidth + this.cellWidth / 2;
+                            const plantY = r * this.cellHeight + this.cellHeight / 2;
+                            this.plants.push(new Plant(plantX, plantY, r, c, this.selectedPlantType));
+                            AudioSys.plant();
+                            this.updateUI();
+                        }
+                    }
+                }
+            }
+
+            openQuestion() {
+                if (this.questionsAnswered >= this.maxQuestions) return;
+                
+                this.isPaused = true;
+                const qObj = this.questions[this.questionsAnswered % this.questions.length];
+                
+                this.modalQuestion.querySelector('.q-text').innerText = qObj.q;
+                const optionsContainer = this.modalQuestion.querySelector('.options-container');
+                optionsContainer.innerHTML = '';
+                
+                qObj.o.forEach((optText, index) => {
+                    const btn = document.createElement('button');
+                    btn.className = 'option-btn';
+                    btn.innerText = `${String.fromCharCode(65 + index)}. ${optText}`;
+                    btn.onclick = () => this.checkAnswer(index, qObj);
+                    optionsContainer.appendChild(btn);
+                });
+                
+                this.modalQuestion.classList.remove('hidden');
+            }
+
+            checkAnswer(selectedIndex, qObj) {
+                this.modalQuestion.classList.add('hidden');
+                this.questionsAnswered++;
+                
+                const isCorrect = (selectedIndex === qObj.a);
+                const feedbackIcon = this.modalFeedback.querySelector('.feedback-icon');
+                const feedbackTitle = this.modalFeedback.querySelector('.feedback-title');
+                const feedbackText = this.modalFeedback.querySelector('.feedback-text');
+                const btnLanjut = this.modalFeedback.querySelector('.btn-lanjut');
+                
+                if (isCorrect) {
+                    AudioSys.correct();
+                    this.correctAnswers++;
+                    this.energy += 50;
+                    this.score += 100;
+                    if (feedbackIcon) feedbackIcon.innerText = '🎉';
+                    if (feedbackTitle) {
+                        feedbackTitle.innerText = 'JAWABAN BENAR!';
+                        feedbackTitle.className = 'font-title text-2xl mb-2 feedback-title text-green-600';
+                    }
+                    if (feedbackText) feedbackText.innerText = `+50 Energi Diterima!\n\n${qObj.exp}`;
+                } else {
+                    AudioSys.wrong();
+                    if (feedbackIcon) feedbackIcon.innerText = '❌';
+                    if (feedbackTitle) {
+                        feedbackTitle.innerText = 'JAWABAN KURANG TEPAT!';
+                        feedbackTitle.className = 'font-title text-2xl mb-2 feedback-title text-red-600';
+                    }
+                    if (feedbackText) feedbackText.innerText = `Tidak mendapat energi.\n\n${qObj.exp}`;
+                }
+
+                if (btnLanjut) {
+                    if (this.questionsAnswered >= this.maxQuestions) {
+                        btnLanjut.innerText = 'Lihat Hasil Akhir 🏆';
+                    } else {
+                        btnLanjut.innerText = 'Lanjut Game';
+                    }
+                }
+                
+                this.updateUI();
+                this.modalFeedback.classList.remove('hidden');
+            }
+
+            closeFeedback() {
+                this.modalFeedback.classList.add('hidden');
+                
+                // Jika sudah menjawab 10 soal, langsung tampilkan layar kemenangan / skor akhir
+                if (this.questionsAnswered >= this.maxQuestions) {
+                    this.triggerVictory();
+                } else {
+                    this.isPaused = false;
+                }
+            }
+
+            triggerVictory() {
+                this.isGameOver = true;
+                AudioSys.victory();
+                
+                const goTitle = this.modalGameOver.querySelector('.go-title');
+                if (goTitle) {
+                    goTitle.innerText = '🏆 MISI SELESAI!';
+                    goTitle.className = 'font-title text-3xl mb-2 text-yellow-500 go-title';
+                }
+                
+                this.modalGameOver.querySelector('.go-score').innerText = `${this.score} Poin`;
+                this.modalGameOver.querySelector('.go-benar').innerText = `${this.correctAnswers} / ${this.maxQuestions}`;
+                this.modalGameOver.querySelector('.go-kills').innerText = `${this.monstersKilled} Monster`;
+                this.modalGameOver.classList.remove('hidden');
+            }
+
+            spawnMonster() {
+                const r = Math.floor(Math.random() * this.rows);
+                const x = this.canvas.width + 30;
+                const y = r * this.cellHeight + this.cellHeight / 2;
+                
+                // Menghapus karakter "speed" (orang berlari) dari daftar kemunculan
+                const types = ['zombie', 'zombie', 'zombie', 'rock'];
+                if (this.wave > 3) types.push('boss');
+                const selectedType = types[Math.floor(Math.random() * types.length)];
+                
+                this.monsters.push(new Monster(x, y, r, 0, selectedType));
+            }
+
+            update() {
+                if (this.isPaused || this.isGameOver) return;
+                
+                this.frameCount++;
+                
+                // Spawn Monster
+                this.monsterSpawnTimer++;
+                if (this.monsterSpawnTimer >= this.monsterSpawnRate) {
+                    this.spawnMonster();
+                    this.monsterSpawnTimer = 0;
+                    if (this.monsterSpawnRate > 200) this.monsterSpawnRate -= 2; // Peningkatan kesulitan diperhalus
+                }
+                
+                // Update Plants
+                this.plants.forEach(p => {
+                    if (!p.active) return;
+                    
+                    if (p.recoil > 0) p.recoil -= 0.1;
+                    
+                    if (p.type === 'sunflower') {
+                        p.lastAction++;
+                        if (p.lastAction >= 600) { // Setiap ~10 detik
+                            this.energy += 25;
+                            AudioSys.sun();
+                            p.lastAction = 0;
+                            this.updateUI();
+                        }
+                    } else if (p.type === 'peashooter' || p.type === 'iceflower') {
+                        p.lastAction++;
+                        const monstersInRow = this.monsters.some(m => m.r === p.r && m.x > p.x && m.active);
+                        if (monstersInRow && p.lastAction >= 120) {
+                            this.projectiles.push(new Projectile(p.x + 20, p.y - 10, p.r, p.type === 'iceflower'));
+                            AudioSys.shoot();
+                            p.recoil = 1;
+                            p.lastAction = 0;
+                        }
+                    } else if (p.type === 'bomb') {
+                        p.timer--;
+                        if (p.timer <= 0) {
+                            AudioSys.bomb();
+                            this.monsters.forEach(m => {
+                                const dist = Math.hypot(m.x - p.x, m.y - p.y);
+                                if (dist < 150) {
+                                    m.hp -= 300;
+                                    if (m.hp <= 0 && m.active) {
+                                        m.active = false;
+                                        this.score += 50;
+                                        this.monstersKilled++;
+                                    }
+                                }
+                            });
+                            p.active = false;
+                        }
+                    }
+                });
+                
+                // Update Projectiles
+                this.projectiles.forEach(proj => {
+                    if (!proj.active) return;
+                    proj.x += proj.speed;
+                    
+                    this.monsters.forEach(m => {
+                        if (m.active && m.r === proj.r && Math.abs(m.x - proj.x) < 30) {
+                            proj.active = false;
+                            m.hp -= proj.damage;
+                            AudioSys.hit();
+                            if (proj.isIce) {
+                                m.isSlowed = 180;
+                            }
+                            if (m.hp <= 0) {
+                                m.active = false;
+                                this.score += 50;
+                                this.monstersKilled++;
+                                this.updateUI();
+                            }
+                        }
+                    });
+                    
+                    if (proj.x > this.canvas.width) proj.active = false;
+                });
+                
+                // Update Monsters
+                this.monsters.forEach(m => {
+                    if (!m.active) return;
+                    
+                    m.walkCycle += 0.1;
+                    
+                    if (m.isSlowed > 0) {
+                        m.isSlowed--;
+                        m.speed = m.baseSpeed * 0.5;
+                    } else {
+                        m.speed = m.baseSpeed;
+                    }
+                    
+                    const plantInFront = this.plants.find(p => p.active && p.r === m.r && Math.abs(p.x - m.x) < 30);
+                    if (plantInFront) {
+                        plantInFront.hp -= m.damage;
+                        if (plantInFront.hp <= 0) plantInFront.active = false;
+                    } else {
+                        m.x -= m.speed;
+                    }
+                    
+                    if (m.x <= 40) {
+                        this.health -= 20;
+                        m.active = false;
+                        this.updateUI();
+                        if (this.health <= 0) {
+                            this.triggerGameOver();
+                        }
+                    }
+                });
+                
+                // Clean up inactive elements
+                this.plants = this.plants.filter(p => p.active);
+                this.monsters = this.monsters.filter(m => m.active);
+                this.projectiles = this.projectiles.filter(p => p.active);
+            }
+
+            draw() {
+                this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+                
+                // Draw Background Image
+                if (GameAssets.bgImg.complete && GameAssets.bgImg.naturalWidth !== 0) {
+                    this.ctx.drawImage(GameAssets.bgImg, 0, 0, this.canvas.width, this.canvas.height);
+                } else {
+                    this.ctx.fillStyle = '#65a30d';
+                    this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+                }
+                
+                // Draw Grid Lines (Light overlay)
+                this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
+                this.ctx.lineWidth = 1;
+                for (let r = 0; r <= this.rows; r++) {
+                    this.ctx.beginPath();
+                    this.ctx.moveTo(0, r * this.cellHeight);
+                    this.ctx.lineTo(this.canvas.width, r * this.cellHeight);
+                    this.ctx.stroke();
+                }
+                for (let c = 0; c <= this.cols; c++) {
+                    this.ctx.beginPath();
+                    this.ctx.moveTo(c * this.cellWidth, 0);
+                    this.ctx.lineTo(c * this.cellWidth, this.canvas.height);
+                    this.ctx.stroke();
+                }
+                
+                // Draw Plants
+                this.plants.forEach(p => {
+                    const imgKey = p.type + 'ImgProcessed';
+                    const rawImgKey = p.type + 'Img';
+                    const img = GameAssets[imgKey] || GameAssets[rawImgKey];
+                    const size = Math.min(this.cellWidth, this.cellHeight) * 0.8;
+                    
+                    this.ctx.save();
+                    this.ctx.translate(p.x, p.y);
+                    
+                    if (p.type === 'peashooter' || p.type === 'iceflower') {
+                        if (p.recoil > 0) {
+                            this.ctx.translate(-p.recoil * 5, 0);
+                        }
+                    } else if (p.type === 'sunflower') {
+                        const scale = 1 + Math.sin(this.frameCount * 0.05) * 0.05;
+                        this.ctx.scale(scale, scale);
+                    } else if (p.type === 'bomb') {
+                        const shake = Math.sin(this.frameCount * 0.5) * 3;
+                        this.ctx.translate(shake, 0);
+                    }
+                    
+                    if (img && img.complete && img.naturalWidth !== 0) {
+                        this.ctx.drawImage(img, -size/2, -size/2, size, size);
+                    } else {
+                        this.ctx.font = `${size*0.7}px sans-serif`;
+                        this.ctx.textAlign = 'center';
+                        this.ctx.textBaseline = 'middle';
+                        this.ctx.fillText(p.icon, 0, 0);
+                    }
+                    this.ctx.restore();
+                });
+                
+                // Draw Projectiles
+                this.projectiles.forEach(proj => {
+                    this.ctx.beginPath();
+                    this.ctx.arc(proj.x, proj.y, 8, 0, Math.PI * 2);
+                    this.ctx.fillStyle = proj.isIce ? '#38bdf8' : '#4ade80';
+                    this.ctx.fill();
+                    this.ctx.strokeStyle = '#ffffff';
+                    this.ctx.lineWidth = 2;
+                    this.ctx.stroke();
+                });
+                
+                // Draw Monsters
+                this.monsters.forEach(m => {
+                    const img = GameAssets.monsterImgProcessed || GameAssets.monsterImg;
+                    const size = Math.min(this.cellWidth, this.cellHeight) * 0.85;
+                    
+                    this.ctx.save();
+                    const walkY = Math.sin(m.walkCycle) * 3;
+                    const walkRot = Math.sin(m.walkCycle) * 0.08;
+                    
+                    this.ctx.translate(m.x, m.y + walkY);
+                    this.ctx.rotate(walkRot);
+                    
+                    if (m.isSlowed > 0) {
+                        this.ctx.filter = 'hue-rotate(180deg) brightness(1.2)';
+                    }
+                    
+                    if (m.type === 'zombie' && img && img.complete && img.naturalWidth !== 0) {
+                        this.ctx.drawImage(img, -size/2, -size/2, size, size);
+                    } else {
+                        this.ctx.font = `${size*0.7}px sans-serif`;
+                        this.ctx.textAlign = 'center';
+                        this.ctx.textBaseline = 'middle';
+                        this.ctx.fillText(m.icon, 0, 0);
+                    }
+                    this.ctx.restore();
+                    
+                    // Health Bar Monster
+                    if (m.hp < m.maxHp) {
+                        const barW = 40;
+                        const barH = 6;
+                        this.ctx.fillStyle = 'rgba(0,0,0,0.5)';
+                        this.ctx.fillRect(m.x - barW/2, m.y - size/2 - 10, barW, barH);
+                        this.ctx.fillStyle = '#ef4444';
+                        this.ctx.fillRect(m.x - barW/2, m.y - size/2 - 10, barW * (m.hp / m.maxHp), barH);
+                    }
+                });
+            }
+
+            triggerGameOver() {
+                this.isGameOver = true;
+                AudioSys.gameOver();
+                this.modalGameOver.querySelector('.go-score').innerText = this.score;
+                this.modalGameOver.querySelector('.go-benar').innerText = this.correctAnswers;
+                this.modalGameOver.querySelector('.go-kills').innerText = this.monstersKilled;
+                this.modalGameOver.classList.remove('hidden');
+            }
+        }
+
+        // --- GAME CONTROLLER ---
+        let activeGames = [];
+
+        function startGame(mode) {
+            AudioSys.init();
+            const container = document.getElementById('game-container');
+            container.innerHTML = '';
+            container.style.display = 'block';
+            
+            showScreen('game-container');
+            
+            if (mode === 1) container.className = 'layout-solo';
+            else if (mode === 2) container.className = 'layout-duel';
+            else if (mode === 4) container.className = 'layout-squad';
+            
+            const template = document.getElementById('player-board-template');
+            activeGames = [];
+            
+            for (let i = 1; i <= mode; i++) {
+                const clone = template.content.cloneNode(true);
+                const boardEl = clone.querySelector('.player-board');
+                boardEl.querySelector('.player-name').innerText = `Pemain ${i}`;
+                container.appendChild(clone);
+                
+                const insertedBoard = container.lastElementChild;
+                const gameInst = new GameInstance(insertedBoard, i);
+                activeGames.push(gameInst);
+            }
+        }
+
+        function stopAllGames() {
+            activeGames.forEach(g => g.isGameOver = true);
+            activeGames = [];
+            const container = document.getElementById('game-container');
+            container.style.display = 'none';
+            container.innerHTML = '';
+        }
+
+        // Main Loop
+        function mainLoop() {
+            activeGames.forEach(game => {
+                game.update();
+                game.draw();
+            });
+            requestAnimationFrame(mainLoop);
+        }
+
+        window.onload = function() {
+            mainLoop();
+        };
+    </script>
+</body>
+</html>
+
+
